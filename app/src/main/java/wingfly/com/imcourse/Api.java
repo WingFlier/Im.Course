@@ -5,6 +5,7 @@ import android.util.Log;
 import android.widget.TextView;
 
 import com.android.volley.AuthFailureError;
+import com.android.volley.Header;
 import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -13,7 +14,9 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,14 +25,23 @@ import java.util.Map;
 
 public class Api
 {
+    private RequestQueue queue;
     private String BASE_URL = "http://im.aua.am";
 
     private String LOGIN = "/Account/Login";
+    private String CLASSES = "/Student/ClassRegistration";
 
-    public void init(Context context, Response.Listener<String> success,
-                     Response.ErrorListener err)
+    public Api init(Context context)
     {
-        RequestQueue queue = Volley.newRequestQueue(context);
+        if (queue == null)
+            queue = Volley.newRequestQueue(context);
+        return this;
+    }
+
+    public void login(Response.Listener<String> success,
+                      Response.ErrorListener err)
+    {
+
 
 // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(Request.Method.POST, BASE_URL + LOGIN,
@@ -47,11 +59,67 @@ public class Api
             @Override
             protected Response<String> parseNetworkResponse(NetworkResponse response)
             {
-                Log.i("response",response.headers.toString());
-                Map<String, String> responseHeaders = response.headers;
-                String rawCookies = responseHeaders.get("Set-Cookie");
-                Log.i("cookies",rawCookies);
+                Log.i("response", response.headers.toString());
+                List<Header> allHeaders = response.allHeaders;
+                Header header = allHeaders.get(5);
+                String value = header.getValue();
+                if (!(header.getName().equals("Set-Cookie")
+                        && value.startsWith("ASP.NET")))
+                {
+                    header = allHeaders.get(6);
+                    value = header.getValue();
+                }
+                String cookie = value.substring(value.indexOf("=") + 1, value.indexOf(";"));
+                Log.i("cookies", cookie);
+                MainActivity.getInstance().saveCookie(cookie);
                 return super.parseNetworkResponse(response);
+            }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError
+            {
+
+                Map<String, String> headers = super.getHeaders();
+
+                if (headers == null
+                        || headers.equals(Collections.emptyMap()))
+                {
+                    headers = new HashMap<String, String>();
+                }
+
+                MainActivity.getInstance().addSessionCookie(headers);
+
+                return headers;
+            }
+        };
+        queue.add(stringRequest);
+    }
+
+    public void getAvailableClasses(Response.Listener<String> success,
+                                    Response.ErrorListener err)
+    {
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, BASE_URL + CLASSES,
+                success, err)
+        {
+            @Override
+            protected Response<String> parseNetworkResponse(NetworkResponse response)
+            {
+                return super.parseNetworkResponse(response);
+            }
+
+            //function to set cookies
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError
+            {
+                Map<String, String> headers = super.getHeaders();
+
+                if (headers == null
+                        || headers.equals(Collections.emptyMap()))
+                {
+                    headers = new HashMap<String, String>();
+                }
+                MainActivity.getInstance().addSessionCookie(headers);
+                return headers;
             }
         };
         queue.add(stringRequest);
