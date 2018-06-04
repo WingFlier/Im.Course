@@ -12,6 +12,13 @@ import android.widget.TextView;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity
@@ -26,30 +33,6 @@ public class MainActivity extends AppCompatActivity
 
     private SharedPreferences preferences;
 
-
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener()
-    {
-
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item)
-        {
-            switch (item.getItemId())
-            {
-                case R.id.navigation_home:
-                    mTextMessage.setText(R.string.title_home);
-                    return true;
-                case R.id.navigation_dashboard:
-                    mTextMessage.setText(R.string.title_dashboard);
-                    return true;
-                case R.id.navigation_notifications:
-                    mTextMessage.setText(R.string.title_notifications);
-                    return true;
-            }
-            return false;
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -60,8 +43,6 @@ public class MainActivity extends AppCompatActivity
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         mTextMessage = (TextView) findViewById(R.id.message);
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
         final Response.Listener<String> suc = new Response.Listener<String>()
         {
@@ -83,12 +64,33 @@ public class MainActivity extends AppCompatActivity
         };
         Api init = new Api().init(this);
         init.login(suc, err);
-        init.getAvailableClasses(new Response.Listener<String>()
+        //TODO split login and other requests part
+        new Api().init(this).getAvailableClasses(new Response.Listener<String>()
         {
             @Override
             public void onResponse(String response)
             {
+                ArrayList<HashMap<String, String>> classesList = new ArrayList<>();
                 mTextMessage.setText("Response is: " + response);
+                Document parse = Jsoup.parse(response);
+                Elements tables = parse.select("table");
+                Element table = tables.get(0);
+                if (table.id().equals("notAvClasses"))
+                    table = tables.get(1);
+
+                Elements classes = table.select("tr");
+                for (int i = 1; i < classes.size(); i++)
+                {
+                    HashMap<String, String> map = new HashMap<>();
+                    Element course = classes.get(i);
+                    String text = course.select("td").select("div").select("div").text();
+                    String id = table.select("tr").get(3).select("div").select("div").select("a").attr("onClick");
+                    map.put("id", id.substring(id.indexOf("(") + 1, id.indexOf(",")));
+                    map.put("title", text);
+                    classesList.add(map);
+                }
+                System.out.println("");
+
             }
         }, err);
     }

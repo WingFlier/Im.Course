@@ -59,7 +59,6 @@ public class Api
             @Override
             protected Response<String> parseNetworkResponse(NetworkResponse response)
             {
-                Log.i("response", response.headers.toString());
                 List<Header> allHeaders = response.allHeaders;
                 Header header = allHeaders.get(5);
                 String value = header.getValue();
@@ -73,23 +72,6 @@ public class Api
                 Log.i("cookies", cookie);
                 MainActivity.getInstance().saveCookie(cookie);
                 return super.parseNetworkResponse(response);
-            }
-
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError
-            {
-
-                Map<String, String> headers = super.getHeaders();
-
-                if (headers == null
-                        || headers.equals(Collections.emptyMap()))
-                {
-                    headers = new HashMap<String, String>();
-                }
-
-                MainActivity.getInstance().addSessionCookie(headers);
-
-                return headers;
             }
         };
         queue.add(stringRequest);
@@ -119,9 +101,11 @@ public class Api
                     headers = new HashMap<String, String>();
                 }
                 MainActivity.getInstance().addSessionCookie(headers);
+
                 return headers;
             }
         };
         queue.add(stringRequest);
+
     }
 }
